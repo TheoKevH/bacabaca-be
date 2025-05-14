@@ -11,6 +11,7 @@ import (
 	"github.com/TheoKevH/bacabaca-be/middleware"
 	"github.com/TheoKevH/bacabaca-be/models"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -75,4 +76,50 @@ func GetPostBySlug(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(post)
+}
+
+func UpdatePost(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	postID := vars["id"]
+
+	var input models.UpdatePostInput
+	err := json.NewDecoder(r.Body).Decode(&input)
+	if err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	email := r.Context().Value(middleware.UserEmailKey).(string)
+	queries := db.New(database.DB)
+
+	// Lookup user ID from email
+	user, err := queries.GetUserByEmail(context.Background(), email)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	postUUID := pgtype.UUID{}
+	err = postUUID.Scan(postID)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	authorUUID := user.ID
+
+	// Update the post (if owned by user)
+	err = queries.UpdatePost(context.Background(), db.UpdatePostParams{
+		Title:    input.Title,
+		Content:  input.Content,
+		ID:       postUUID,
+		AuthorID: authorUUID,
+	})
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error updating post: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "Post updated successfully")
 }

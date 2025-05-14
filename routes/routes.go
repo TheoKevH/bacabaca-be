@@ -16,4 +16,5 @@ func RegisterRoutes(r *mux.Router) {
 	auth := r.PathPrefix(("/api")).Subrouter()
 	auth.Use(middleware.JWTMiddleware)
 	auth.HandleFunc("/posts", controllers.CreatePost).Methods("POST")
+	auth.HandleFunc("/posts/{id}", controllers.UpdatePost).Methods("PUT")
 }
