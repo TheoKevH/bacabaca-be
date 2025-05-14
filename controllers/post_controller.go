@@ -123,3 +123,37 @@ func UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintln(w, "Post updated successfully")
 }
+
+func DeletePost(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	postID := vars["id"]
+
+	email := r.Context().Value(middleware.UserEmailKey).(string)
+	queries := db.New(database.DB)
+
+	user, err := queries.GetUserByEmail(context.Background(), email)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	postUUID := pgtype.UUID{}
+	err = postUUID.Scan(postID)
+	if err != nil {
+		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		return
+	}
+
+	// Use user.ID directly (already pgtype.UUID)
+	err = queries.DeletePost(context.Background(), db.DeletePostParams{
+		ID:       postUUID,
+		AuthorID: user.ID,
+	})
+
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error deleting post: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
