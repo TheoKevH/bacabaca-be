@@ -5,17 +5,24 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/TheoKevH/bacabaca-be/database"
+	"github.com/TheoKevH/bacabaca-be/routes"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
-func main(){
+func main() {
+	godotenv.Load()
+
+	database.Connect()
+
 	r := mux.NewRouter()
+	routes.RegisterRoutes(r)
 
-	// Test route
-    r.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
-        fmt.Fprintln(w, "Bacabaca API is healthy!")
-    }).Methods("GET")
+	r.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Bacabaca API is healthy!")
+	}).Methods("GET")
 
-    fmt.Println("Server is running at http://localhost:8080")
-    log.Fatal(http.ListenAndServe(":8080", r))
+	fmt.Println("Server running on http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
